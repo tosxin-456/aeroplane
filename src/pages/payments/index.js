@@ -49,11 +49,13 @@ export default function PaymentPage() {
     };
 
     const formatCurrency = (amount, currency) => {
+        const normalizedAmount = amount / 100; // Convert cents to main currency unit
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: currency.toUpperCase()
-        }).format(amount);
+            currency: currency.toUpperCase(),
+        }).format(normalizedAmount);
     };
+    
 
     const getPaymentMethodIcon = (method) => {
         switch (method) {

@@ -709,7 +709,7 @@ export default function DashboardHome() {
                                             {payment.userId}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                            {getCurrencySymbol(payment.currency)}{parseFloat(payment.amount).toFixed(2)}
+                                            {getCurrencySymbol(payment.currency)}{parseFloat(payment.amount / 100).toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
                                             {payment.paymentMethod}
