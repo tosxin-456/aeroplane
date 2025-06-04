@@ -84,7 +84,7 @@ const FloatingNavbar = () => {
                         </div>
 
                         {/* Desktop Auth Buttons */}
-                        <div className="hidden md:flex items-center space-x-4">
+                        {/* <div className="hidden md:flex items-center space-x-4">
                             <Link
                                 to="/login"
                                 className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg"
@@ -99,7 +99,7 @@ const FloatingNavbar = () => {
                                 <UserPlus className="h-4 w-4" />
                                 <span className="font-medium">Sign up</span>
                             </Link>
-                        </div>
+                        </div> */}
 
                         {/* Mobile Menu Button */}
                         <div className="md:hidden">
