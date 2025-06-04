@@ -18,6 +18,7 @@ import { FaEuroSign, FaNairaSign, FaPassport } from "react-icons/fa6";
 import { useLocation, useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../config/apiConfig";
 import PaymentPage from "../../components/paymentIdComponent";
+import TravelLoader from "../../components/airlplaneLoader";
 
 const currencyIcons = {
     USD: <FaDollarSign />,
@@ -203,6 +204,7 @@ export default function FlightBookingForm({ flightOffer }) {
         try {
             setLoading(true);
             setError(null);
+            await new Promise((resolve) => setTimeout(resolve, 100));
 
             const formattedTravelers = await Promise.all(
                 travelers.map(async (traveler, index) => {
@@ -258,7 +260,7 @@ export default function FlightBookingForm({ flightOffer }) {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || "Failed to book and ticket flight");
+                setError(data.message || "Failed to book and ticket flight");
             }
 
             // Update state with booking reference and ticket number
@@ -271,51 +273,10 @@ export default function FlightBookingForm({ flightOffer }) {
             console.error("Booking error:", err);
             setError(err.message || "An error occurred during booking and ticketing");
         } finally {
-            setActiveStep(3)
             setLoading(false);
         }
 
     };
-    
-    
-
-    const getUpsellPricing = async (flight) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/flights/upsell-options`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ flightOffer: flight })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Failed to fetch upsell pricing");
-            }
-            setUpsellOptions(data.data)
-            // return data.data; // This includes seat and baggage pricing
-        } catch (error) {
-            console.error("Upsell fetch error:", error);
-            throw error;
-        }
-    };
-
-    useEffect(() => {
-        const fetchUpsellData = async () => {
-            try {
-                const upsellData = await getUpsellPricing(flight);
-                console.log("Upsell options:", upsellData);
-            } catch (err) {
-                console.error("Could not load upsell data", err);
-            }
-        };
-
-        if (flight) {
-            fetchUpsellData();
-        }
-    }, [flight]);
 
 
 
@@ -393,6 +354,8 @@ export default function FlightBookingForm({ flightOffer }) {
                     </div>
                 </div>
             </div>
+
+            {loading && <TravelLoader />}
 
             {/* Step 1: Flight Details */}
             {activeStep === 1 && (
@@ -735,138 +698,7 @@ export default function FlightBookingForm({ flightOffer }) {
                     </div>
 
                     {/* Payment Section - Basic Card Details */}
-                    {/* <div className="bg-white p-4 sm:p-6 rounded-xl border shadow-sm mb-6">
-                        <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
-                            <CreditCard className="mr-2 text-blue-600" /> Payment Details
-                        </h3>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Cardholder Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={paymentDetails.cardholderName || ''}
-                                    onChange={(e) => setPaymentDetails({ ...paymentDetails, cardholderName: e.target.value })}
-                                    className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Name as it appears on card"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Card Number
-                                </label>
-                                <input
-                                    type="text"
-                                    value={paymentDetails.cardNumber || ''}
-                                    onChange={(e) => setPaymentDetails({ ...paymentDetails, cardNumber: e.target.value })}
-                                    className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="1234 5678 9012 3456"
-                                    maxLength="19"
-                                    required
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Expiry Date
-                                    </label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <select
-                                            value={paymentDetails.expiryMonth || ''}
-                                            onChange={(e) => {
-                                                const month = e.target.value.padStart(2, '0');
-                                                setPaymentDetails({
-                                                    ...paymentDetails,
-                                                    expiryMonth: month,
-                                                    expiryDate: paymentDetails.expiryYear ?
-                                                        `${paymentDetails.expiryYear}-${month}` : undefined
-                                                });
-                                            }}
-                                            className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                            required
-                                        >
-                                            <option value="">MM</option>
-                                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                                <option key={month} value={month}>{month.toString().padStart(2, '0')}</option>
-                                            ))}
-                                        </select>
-                                        <select
-                                            value={paymentDetails.expiryYear || ''}
-                                            onChange={(e) => {
-                                                setPaymentDetails({
-                                                    ...paymentDetails,
-                                                    expiryYear: e.target.value,
-                                                    expiryDate: paymentDetails.expiryMonth ?
-                                                        `${e.target.value}-${paymentDetails.expiryMonth}` : undefined
-                                                });
-                                            }}
-                                            className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                            required
-                                        >
-                                            <option value="">YYYY</option>
-                                            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(year => (
-                                                <option key={year} value={year}>{year}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        CVC
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={paymentDetails.cvc || ''}
-                                        onChange={(e) => setPaymentDetails({ ...paymentDetails, cvc: e.target.value })}
-                                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="123"
-                                        maxLength="4"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Card Type
-                                </label>
-                                <select
-                                    value={paymentDetails.cardType || ''}
-                                    onChange={(e) => setPaymentDetails({ ...paymentDetails, cardType: e.target.value })}
-                                    className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                    required
-                                >
-                                    <option value="">Select card type</option>
-                                    <option value="VI">Visa</option>
-                                    <option value="MC">MasterCard</option>
-                                    <option value="AX">American Express</option>
-                                    <option value="DC">Discover</option>
-                                </select>
-                            </div>
-
-                            <div className="mt-6">
-                                <button
-                                    onClick={processBookingAndTicketing}
-                                    disabled={loading}
-                                    className="w-full bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <Loader2 className="animate-spin mr-2" size={18} />
-                                            Processing...
-                                        </>
-                                    ) : (
-                                        <>Complete Booking and Ticketing</>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div> */}
                     <PaymentPage
                         currency={currency}
                         amount={parseFloat(flight.pricing.display.amount).toFixed(2)}
@@ -914,7 +746,7 @@ export default function FlightBookingForm({ flightOffer }) {
                                 <div className="bg-gray-50 p-4 rounded-lg mb-6 mx-auto max-w-lg">
                                     <div className="flex justify-between mb-2">
                                         <span className="text-gray-600">Booking Reference:</span>
-                                        <span className="font-semibold">ABC123XYZ</span>
+                                        <span className="font-semibold">{bookingReferences}</span>
                                     </div>
                                     <div className="flex justify-between mb-2">
                                         <span className="text-gray-600">Flight:</span>
@@ -943,7 +775,7 @@ export default function FlightBookingForm({ flightOffer }) {
                                         <span className="font-bold text-blue-700">
                                             {currencyIcons[flight.price.currency] ||
                                                 flight.price.currency}{" "}
-                                            {parseFloat(flight.price.grandTotal).toFixed(2)}
+                                            {parseFloat(flight.pricing.display.amount).toFixed(2)}
                                         </span>
                                     </div>
                                 </div>

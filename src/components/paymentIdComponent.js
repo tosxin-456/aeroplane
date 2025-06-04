@@ -18,6 +18,7 @@ const currencyIcons = {
 
 const PaymentForm = ({ amount, currency, onPaymentSuccess, loading: externalLoading, error: externalError }) => {
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [paymentStatus, setPaymentStatus] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
     const stripe = useStripe();
@@ -71,6 +72,7 @@ const PaymentForm = ({ amount, currency, onPaymentSuccess, loading: externalLoad
             setTimeout(() => {
                 setPaymentStatus('success');
                 setIsProcessing(false);
+      
 
                 // Call the onPaymentSuccess callback with payment details
                 if (onPaymentSuccess) {
@@ -127,21 +129,16 @@ const PaymentForm = ({ amount, currency, onPaymentSuccess, loading: externalLoad
                     <CheckCircle className="h-8 w-8 text-green-600" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Payment Successful!</h3>
-                <p className="text-gray-600 mb-6">Your payment has been processed successfully.</p>
+                <p className="text-gray-600 mb-6">Please wait while your appointment is being booked...</p>
                 <div className="space-y-3">
                     <p className="text-sm text-gray-500">
-                        You will be redirected shortly, or you can continue below.
+                        This may take a few moments. Do not refresh or close this page.
                     </p>
-                    <button
-                        onClick={handleRetry}
-                        className="bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                    >
-                        Make Another Payment
-                    </button>
                 </div>
             </div>
         );
     }
+    
 
     return (
         <div className="space-y-6">

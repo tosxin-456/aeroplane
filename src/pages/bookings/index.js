@@ -88,10 +88,6 @@ export default function BookingsPage() {
         return `BK-${rawReference}`;
     };
 
-    // const travelersInfo = resuls
-    // console.log(travelersInfo)
-    // const totalPrice = resuls.travelersInfo.price.total;
-    // console.log("Total Price:", totalPrice);
 
     const fetchBookings = async () => {
         try {
@@ -103,6 +99,7 @@ export default function BookingsPage() {
             }
 
             const result = await response.json();
+            console.log(result)
 
             if (result.success) {
                 const formattedBookings = result.data.map((item) => {

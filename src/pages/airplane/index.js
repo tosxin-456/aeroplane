@@ -307,13 +307,17 @@ const FlightSearchPage = () => {
         ).slice(0, 8) : [];
 
     return (
-        <div className="min-h-screen py-8 px-4">
+        <div className=" min-h-screen bg-gradient-to-br mt-50 from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
             <div className="max-w-3xl mx-auto">
-                <div className="text-center mb-6">
-                    <h1 className="text-2xl font-bold text-blue-800 flex items-center justify-center">
-                        <FaPlane className="mr-2" /> Flight Search
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4 shadow-lg">
+                        <FaPlane className="text-2xl text-white" />
+                    </div>
+                    <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                        Flight Search
                     </h1>
-                    <p className="text-blue-600">Find the best flights for your journey</p>
+                    <p className="text-xl text-gray-600 font-medium">Find the best flights for your journey</p>
+                    <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mt-4 rounded-full"></div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-lg p-6">

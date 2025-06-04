@@ -17,7 +17,8 @@ import {
     Building,
     Bus,
     Train,
-    Globe
+    Globe,
+    BookImageIcon
 } from 'lucide-react';
 
 export default function DashboardLayout() {
@@ -55,10 +56,12 @@ export default function DashboardLayout() {
         { name: 'Dashboard', icon: Home, path: '/dashboard', exact: true },
         { name: 'Travel Services', icon: Globe, path: '/dashboard/travel-services' },
         { name: 'Customers', icon: Users, path: '/dashboard/customers' },
+        { name: 'Manual Booking', icon: BookImageIcon, path: '/dashboard/manual-book' }, // new item
         { name: 'Bookings', icon: Calendar, path: '/dashboard/bookings' },
         { name: 'Payments', icon: CreditCard, path: '/dashboard/payments' },
         { name: 'Settings', icon: Settings, path: '/dashboard/settings' },
     ];
+
 
     return (
         <div className="flex h-screen bg-gray-100">

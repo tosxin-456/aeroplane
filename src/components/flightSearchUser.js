@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import {
     Plane, Calendar, Luggage, Timer, MapPin,
     ChevronDown, ChevronUp, CircleDot, Circle, Briefcase,
-    Clock, Users, Shield, ArrowRight, ArrowUpRight
+    Clock, Users, Shield, ArrowRight, ArrowUpRight, Star,
+    Wifi, Coffee, Monitor, Utensils, Heart, TrendingUp,
+    Award, CheckCircle, AlertCircle, Info, Zap, Globe
 } from "lucide-react";
 import { FaDollarSign, FaPoundSign, FaRupeeSign, FaYenSign } from "react-icons/fa";
 import { FaEuroSign, FaNairaSign } from "react-icons/fa6";
@@ -121,41 +123,18 @@ export default function FlightSearchUser({ flights }) {
         });
     };
 
-    const handleSubmit = async (airlineCode) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/flights/get-link`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ airlineCode }),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) throw new Error(result.message || "Failed to fetch flights");
-
-            console.log("Flight search result:", result);
-
-            if (result.checkinUrl) {
-                setCheckinUrl(result.checkinUrl);
-                setShowModal(true);
-            }
-
-        } catch (error) {
-            console.error("Error searching flights:", error);
-            setIsLoading(false);
-        }
-    };
-
     if (isLoading) {
         return (
-            <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-gray-50 rounded-xl sm:rounded-2xl shadow-sm">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 sm:mb-8 flex items-center">
-                    <Plane className="mr-2 sm:mr-3 text-blue-600" /> Loading Flight Results...
-                </h2>
-                <div className="flex justify-center items-center h-40">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="max-w-5xl mx-auto p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl shadow-lg">
+                <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4 animate-pulse">
+                        <Plane className="text-white animate-bounce" size={24} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-4">Finding Your Perfect Flight</h2>
+                    <div className="flex justify-center items-center space-x-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <span className="text-gray-600">Searching hundreds of airlines...</span>
+                    </div>
                 </div>
             </div>
         );
@@ -170,115 +149,127 @@ export default function FlightSearchUser({ flights }) {
         return (
             <div className="mb-6">
                 {index > 0 && (
-                    <div className="text-sm flex items-center text-blue-600 font-medium mb-3 pb-2 border-b border-blue-100">
-                        <ArrowUpRight size={16} className="mr-2" />
-                        Return Flight
+                    <div className="text-sm flex items-center text-emerald-600 font-medium mb-3 pb-2 border-b border-emerald-100">
+                        <ArrowUpRight size={16} className="mr-2 animate-pulse" />
+                        Return Journey
                     </div>
                 )}
 
                 {index === 0 && isRoundTrip(flights) && (
                     <div className="text-sm flex items-center text-blue-600 font-medium mb-3 pb-2 border-b border-blue-100">
                         <Plane size={16} className="mr-2" />
-                        Outbound Flight
+                        Outbound Journey
                     </div>
                 )}
 
                 {/* Flight Timeline (Mobile: Stack, Desktop: Horizontal) */}
                 <div className="flex flex-col sm:flex-row justify-between mb-4 sm:mb-6 sm:items-center">
                     {/* Mobile Timeline View */}
-                    <div className="flex justify-between items-center sm:hidden mb-4">
-                        {/* Departure */}
+                    <div className="flex justify-between items-center sm:hidden mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl">
                         <div className="text-left">
-                            <div className="text-lg font-bold text-gray-800">{formatDateTime(dep.at).time}</div>
-                            <div className="flex items-center">
+                            <div className="text-2xl font-bold text-gray-800 flex items-center">
+                                {formatDateTime(dep.at).time}
+                                <Clock size={16} className="ml-2 text-blue-500" />
+                            </div>
+                            <div className="flex items-center mt-1">
                                 <MapPin size={14} className="mr-1 text-blue-500" />
-                                <span className="font-medium text-gray-700">{dep.iataCode}</span>
+                                <span className="font-semibold text-gray-700">{dep.iataCode}</span>
                             </div>
                         </div>
 
-                        {/* Arrow */}
-                        <div className="flex flex-col items-center px-3">
-                            <div className="text-xs text-gray-600 font-medium mb-1">
+                        <div className="flex flex-col items-center px-4">
+                            <div className="text-xs text-gray-600 font-medium mb-1 flex items-center">
+                                <Timer size={12} className="mr-1" />
                                 {formatDuration(itinerary.duration)}
                             </div>
-                            <ArrowRight size={20} className="text-blue-500" />
-                            <div className={`text-xs font-medium rounded-full px-2 py-0.5 mt-1 ${segs.length > 1 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
+                            <div className="relative">
+                                <ArrowRight size={24} className="text-blue-500 animate-pulse" />
+                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
+                            </div>
+                            <div className={`text-xs font-medium rounded-full px-3 py-1 mt-1 shadow-sm ${segs.length > 1 ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'}`}>
                                 {getConnectionLabel(segs)}
                             </div>
                         </div>
 
-                        {/* Arrival */}
                         <div className="text-right">
-                            <div className="text-lg font-bold text-gray-800">{formatDateTime(arr.at).time}</div>
-                            <div className="flex items-center justify-end">
+                            <div className="text-2xl font-bold text-gray-800 flex items-center">
+                                <Clock size={16} className="mr-2 text-blue-500" />
+                                {formatDateTime(arr.at).time}
+                            </div>
+                            <div className="flex items-center justify-end mt-1">
                                 <MapPin size={14} className="mr-1 text-blue-500" />
-                                <span className="font-medium text-gray-700">{arr.iataCode}</span>
+                                <span className="font-semibold text-gray-700">{arr.iataCode}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Desktop Timeline View */}
-                    <div className="hidden sm:flex justify-between w-full items-center">
-                        {/* Departure */}
+                    {/* Enhanced Desktop Timeline */}
+                    <div className="hidden sm:flex justify-between w-full items-center bg-gradient-to-r from-blue-50 via-white to-blue-50 p-6 rounded-xl shadow-sm">
                         <div className="text-left">
-                            <div className="text-xl font-bold text-gray-800">{formatDateTime(dep.at).time}</div>
-                            <div className="flex items-center mt-1">
-                                <MapPin size={14} className="mr-1 text-blue-500" />
-                                <span className="font-medium text-gray-700">{dep.iataCode}</span>
+                            <div className="text-2xl font-bold text-gray-800 flex items-center">
+                                {formatDateTime(dep.at).time}
+                                <Clock size={18} className="ml-2 text-blue-500" />
                             </div>
-                            <div className="text-sm text-gray-500 mt-1">{formatDateTime(dep.at).day}, {formatDateTime(dep.at).date.split(", ")[0]}</div>
+                            <div className="flex items-center mt-2">
+                                <MapPin size={16} className="mr-2 text-blue-500" />
+                                <span className="font-semibold text-gray-700 text-lg">{dep.iataCode}</span>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1 flex items-center">
+                                <Calendar size={14} className="mr-1" />
+                                {formatDateTime(dep.at).day}, {formatDateTime(dep.at).date}
+                            </div>
                         </div>
 
-                        {/* Flight Path Visualization */}
-                        <div className="flex flex-col items-center px-4 md:px-8 flex-1 max-w-sm">
-                            <div className="text-sm text-gray-600 font-medium flex items-center">
-                                <Clock size={14} className="mr-1 text-blue-500" />
+                        {/* Enhanced Flight Path */}
+                        <div className="flex flex-col items-center px-8 flex-1 max-w-md">
+                            <div className="text-sm text-gray-600 font-medium flex items-center mb-2">
+                                <Timer size={14} className="mr-2 text-blue-500" />
                                 {formatDuration(itinerary.duration)}
                             </div>
-                            <div className="relative w-full my-3">
-                                <div className="border-t-2 border-gray-200 absolute w-full top-1/2" />
-                                <div className="absolute -top-1 left-0">
-                                    <Circle size={12} className="text-blue-500 fill-blue-500" />
+                            <div className="relative w-full my-4">
+                                <div className="border-t-2 border-dashed border-blue-300 absolute w-full top-1/2 animate-pulse" />
+                                <div className="absolute -top-2 left-0">
+                                    <div className="w-4 h-4 bg-blue-500 rounded-full shadow-lg animate-pulse" />
                                 </div>
 
                                 {segs.length > 1 && segs.map((_, idx) => {
                                     if (idx === 0) return null;
                                     return (
-                                        <div key={idx} className="absolute -top-1" style={{ left: `${(idx / segs.length) * 100}%` }}>
-                                            <CircleDot size={14} className="text-blue-500" />
+                                        <div key={idx} className="absolute -top-2" style={{ left: `${(idx / segs.length) * 100}%` }}>
+                                            <div className="w-3 h-3 bg-amber-500 rounded-full shadow animate-bounce" style={{ animationDelay: `${idx * 0.2}s` }} />
                                         </div>
                                     );
                                 })}
 
-                                <div className="absolute -top-1 right-0">
-                                    <Circle size={12} className="text-blue-500 fill-blue-500" />
+                                <div className="absolute -top-2 right-0">
+                                    <div className="w-4 h-4 bg-emerald-500 rounded-full shadow-lg animate-pulse" />
                                 </div>
                             </div>
-                            <div className={`text-xs font-medium rounded-full px-3 py-1 ${segs.length > 1 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
+                            <div className={`text-xs font-semibold rounded-full px-4 py-2 shadow-sm transition-all hover:shadow-md ${segs.length > 1 ? 'bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 border border-amber-300' : 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300'}`}>
                                 {getConnectionLabel(segs)}
                             </div>
                         </div>
 
-                        {/* Arrival */}
                         <div className="text-right">
-                            <div className="text-xl font-bold text-gray-800">{formatDateTime(arr.at).time}</div>
-                            <div className="flex items-center justify-end mt-1">
-                                <MapPin size={14} className="mr-1 text-blue-500" />
-                                <span className="font-medium text-gray-700">{arr.iataCode}</span>
+                            <div className="text-2xl font-bold text-gray-800 flex items-center">
+                                <Clock size={18} className="mr-2 text-blue-500" />
+                                {formatDateTime(arr.at).time}
                             </div>
-                            <div className="text-sm text-gray-500 mt-1">{formatDateTime(arr.at).day}, {formatDateTime(arr.at).date.split(", ")[0]}</div>
+                            <div className="flex items-center justify-end mt-2">
+                                <MapPin size={16} className="mr-2 text-blue-500" />
+                                <span className="font-semibold text-gray-700 text-lg">{arr.iataCode}</span>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1 flex items-center justify-end">
+                                <Calendar size={14} className="mr-1" />
+                                {formatDateTime(arr.at).day}, {formatDateTime(arr.at).date}
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                {/* Date & Day Info - Mobile Only */}
-                <div className="flex justify-between text-xs text-gray-500 mb-4 sm:hidden">
-                    <div>{formatDateTime(dep.at).day}, {formatDateTime(dep.at).date.split(", ")[0]}</div>
-                    <div>{formatDateTime(arr.at).day}, {formatDateTime(arr.at).date.split(", ")[0]}</div>
                 </div>
             </div>
         );
     };
+
 
     // Helper function to render detailed flight segments
     const renderDetailedSegments = (itinerary, itineraryIndex) => {
@@ -341,10 +332,18 @@ export default function FlightSearchUser({ flights }) {
 
     return (
         <>
-            <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-gray-50 rounded-xl sm:rounded-2xl shadow-sm">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 sm:mb-8 flex items-center">
-                    <Plane className="mr-2 sm:mr-3 text-blue-600" /> Flight Search Results
-                </h2>
+            <div className="max-w-6xl mx-auto p-4 sm:p-6 bg-gradient-to-br from-blue-50 via-white to-indigo-50 rounded-2xl shadow-xl">
+                {/* Enhanced Header */}
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full mb-4 shadow-lg">
+                        <Plane className="text-white" size={24} />
+                    </div>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-2">Your Flight Options</h2>
+                    <p className="text-gray-600 flex items-center justify-center">
+                        <Globe size={16} className="mr-2" />
+                        Found {flights.length} amazing deals for your journey
+                    </p>
+                </div>
 
                 {flights.map((flight) => {
                     const flightId = flight.id;
