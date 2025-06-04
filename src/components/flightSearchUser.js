@@ -58,7 +58,7 @@ export default function FlightSearchUser({ flights }) {
     // Calculate price with 15% markup
     const calculatePriceWithMarkup = (originalPrice) => {
         const original = parseFloat(originalPrice);
-        const markedUp = original * 1.15;
+        const markedUp = original * 1.10;
         return {
             original: original.toFixed(2),
             markedUp: markedUp.toFixed(2)
