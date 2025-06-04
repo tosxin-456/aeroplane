@@ -19,6 +19,8 @@ import FlightSearchPage from "./pages/airplane";
 import DashboardLayout from "./components/DahboardLayout";
 import FloatingNavbar from "./components/navbar";
 import FlightBookingsDisplay from "./pages/manualbookinsg";
+import Register from "./pages/sign up";
+import Login from "./pages/login user";
 // import PublicLayout from "./components/publicLayout";
 
 
@@ -38,6 +40,8 @@ function App() {
 
           {/* Admin login route (no layout) */}
           <Route path="/admin" element={<LoginPage />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
 
           {/* Dashboard routes (with DashboardLayout) */}
           <Route path="/dashboard" element={<DashboardLayout />}>

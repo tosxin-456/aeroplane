@@ -29,8 +29,8 @@ const FloatingNavbar = () => {
     ];
 
     const authItems = [
-        { id: 'login', icon: LogIn, label: "Login", href: "/login" },
-        { id: 'signup', icon: UserPlus, label: "Sign up", href: "/signup" },
+        // { id: 'login', icon: LogIn, label: "Login", href: "/login" },
+        // { id: 'signup', icon: UserPlus, label: "Sign up", href: "/register" },
     ];
 
     const isActiveRoute = (href) => {
