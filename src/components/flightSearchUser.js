@@ -395,7 +395,7 @@ export default function FlightSearchUser({ flights }) {
 
                                     <div className="text-blue-700 font-bold text-xl sm:text-2xl flex items-center bg-blue-50 px-4 py-2 rounded-lg self-start sm:self-auto">
                                         <span className="mr-1 text-blue-600">{currencyIcons[flight.price.currency] || flight.price.currency}</span>
-                                        {prices.markedUp}
+                                        {Number(prices.markedUp).toLocaleString()}
                                     </div>
                                 </div>
 
