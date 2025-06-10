@@ -21,6 +21,9 @@ import FloatingNavbar from "./components/navbar";
 import FlightBookingsDisplay from "./pages/manualbookinsg";
 import Register from "./pages/sign up";
 import Login from "./pages/login user";
+import BusSearchPage from "./pages/flix bus";
+import TrainSearchPage from "./pages/flix train";
+import TrainBookingPage from "./pages/book train flix";
 // import PublicLayout from "./components/publicLayout";
 
 
@@ -34,8 +37,14 @@ function App() {
             <Route index element={<FlightSearchPage />} />
             <Route path="book/flight" element={<FlightBookingForm />} />
             <Route path="hotels" element={<HotelSearch />} />
-            <Route path="trains" element={<TrainSearchForm />} />
-            <Route path="buses" element={<BusSearchForm />} />
+            {/* <Route path="trains" element={<TrainSearchForm />} /> */}
+            {/* <Route path="buses" element={<BusSearchForm />} /> */}
+            <Route path="buses" element={<BusSearchPage />} />
+            <Route path="trains" element={<TrainSearchPage />} />
+            <Route path="book/bus" element={<TrainBookingPage />} />
+
+
+
           </Route>
 
           {/* Admin login route (no layout) */}
