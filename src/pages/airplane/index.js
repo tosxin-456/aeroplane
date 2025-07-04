@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../../config/apiConfig';
 import FlightSearchResults from '../../components/flightsComponent';
 import FlightItinerary from '../../components/flightsComponent';
 import FlightSearchUser from '../../components/flightSearchUser';
+import { Minus, Plus } from 'lucide-react';
 
 const currencies = [
     { code: 'USD', name: 'US Dollar', symbol: '$' },
@@ -56,8 +57,14 @@ const FlightSearchPage = () => {
         departureDate: '',
         departureTime: '',
         travelers: 1,
-        cabinClass: 'ECONOMY',
-        currencyCode: 'USD'
+        cabinClass: 'economy',
+        currencyCode: 'USD',
+        passengers: {
+            adults: 1,
+            children: 0,
+            infantsOnLap: 0,
+            infantsInSeat: 0,
+        },
     });
 
     const [countries, setCountries] = useState([]);
@@ -275,6 +282,7 @@ const FlightSearchPage = () => {
             departureTime: formData.departureTime,
             travelers: formData.travelers,
             cabinClass: formData.cabinClass,
+            passengers: formData.passengers,
             tripType: formData.tripType, // 🔥 tripType added
             ...(formData.tripType === "roundtrip" && { returnDate: formData.returnDate })
         };
@@ -308,6 +316,66 @@ const FlightSearchPage = () => {
         }
     };
 
+    const [showPassengerPopup, setShowPassengerPopup] = useState(false);
+
+    const passengerTypes = [
+        {
+            key: "adults",
+            title: "Adults",
+            description: "Ages 12 and above",
+            minValue: 1,
+        },
+        {
+            key: "children",
+            title: "Children",
+            description: "Ages 2–11",
+            minValue: 0,
+        },
+        {
+            key: "infantsOnLap",
+            title: "Infants (on lap)",
+            description: "Under 2, sitting on adult’s lap",
+            minValue: 0,
+        },
+        {
+            key: "infantsInSeat",
+            title: "Infants (in seat)",
+            description: "Under 2, with own seat",
+            minValue: 0,
+        },
+    ];
+
+    const updatePassenger = (key, increment) => {
+        setFormData((prev) => {
+            const currentCount = prev.passengers[key];
+            const min = passengerTypes.find((t) => t.key === key)?.minValue || 0;
+            const newCount = increment
+                ? currentCount + 1
+                : Math.max(min, currentCount - 1);
+
+            return {
+                ...prev,
+                passengers: {
+                    ...prev.passengers,
+                    [key]: newCount,
+                },
+            };
+        });
+    };
+
+    const getPassengerSummary = () => {
+        const { adults, children, infantsOnLap, infantsInSeat } = formData.passengers;
+        const parts = [];
+
+        if (adults > 0) parts.push(`${adults} Adult${adults > 1 ? "s" : ""}`);
+        if (children > 0) parts.push(`${children} Child${children > 1 ? "ren" : ""}`);
+        if (infantsOnLap > 0)
+            parts.push(`${infantsOnLap} Infant${infantsOnLap > 1 ? "s" : ""} on lap`);
+        if (infantsInSeat > 0)
+            parts.push(`${infantsInSeat} Infant${infantsInSeat > 1 ? "s" : ""} in seat`);
+
+        return parts.join(", ") || "Select passengers";
+    };
 
     // Filter countries based on search
     const filteredOriginCountries = countries.filter(country =>
@@ -349,17 +417,17 @@ const FlightSearchPage = () => {
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Currency Selection */}
                             <div>
-                                <label className="block text-sm font-medium text-blue-700 mb-1">
+                                <label className="block text-sm font-medium text-blue-700 mb-2">
                                     <FaDollarSign className="inline mr-1" /> Currency
                                 </label>
                                 <select
                                     name="currencyCode"
                                     value={formData.currencyCode}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     {currencies.map(currency => (
                                         <option key={currency.code} value={currency.code}>
@@ -373,25 +441,25 @@ const FlightSearchPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Origin Country */}
                                 <div className="relative" ref={originCountryDropdownRef}>
-                                    <label className="block text-sm font-medium text-blue-700 mb-1">Origin Country</label>
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">Origin Country</label>
                                     <input
                                         type="text"
                                         value={originCountrySearch}
                                         onChange={(e) => setOriginCountrySearch(e.target.value)}
                                         onFocus={() => setShowOriginCountryDropdown(true)}
                                         placeholder="Search for a country"
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         disabled={loadingCountries}
                                     />
                                     {loadingCountries && <p className="text-xs text-blue-500 mt-1">Loading...</p>}
 
                                     {showOriginCountryDropdown && filteredOriginCountries.length > 0 && (
-                                        <div className="absolute z-20 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto">
+                                        <div className="absolute z-20 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto border border-gray-200">
                                             {filteredOriginCountries.map((country, index) => (
                                                 <div
                                                     key={`origin-${country}-${index}`}
                                                     onClick={() => selectCountry('origin', country)}
-                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100"
+                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100 transition-colors"
                                                 >
                                                     {country}
                                                 </div>
@@ -402,25 +470,25 @@ const FlightSearchPage = () => {
 
                                 {/* Destination Country */}
                                 <div className="relative" ref={destCountryDropdownRef}>
-                                    <label className="block text-sm font-medium text-blue-700 mb-1">Destination Country</label>
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">Destination Country</label>
                                     <input
                                         type="text"
                                         value={destCountrySearch}
                                         onChange={(e) => setDestCountrySearch(e.target.value)}
                                         onFocus={() => setShowDestCountryDropdown(true)}
                                         placeholder="Search for a country"
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         disabled={loadingCountries}
                                     />
                                     {loadingCountries && <p className="text-xs text-blue-500 mt-1">Loading...</p>}
 
                                     {showDestCountryDropdown && filteredDestCountries.length > 0 && (
-                                        <div className="absolute z-20 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto">
+                                        <div className="absolute z-20 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto border border-gray-200">
                                             {filteredDestCountries.map((country, index) => (
                                                 <div
                                                     key={`dest-${country}-${index}`}
                                                     onClick={() => selectCountry('destination', country)}
-                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100"
+                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100 transition-colors"
                                                 >
                                                     {country}
                                                 </div>
@@ -434,26 +502,26 @@ const FlightSearchPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Origin City */}
                                 <div className="relative">
-                                    <label className="block text-sm font-medium text-blue-700 mb-1">Origin City</label>
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">Origin City</label>
                                     <input
                                         type="text"
                                         value={originCitySearch}
                                         onChange={(e) => setOriginCitySearch(e.target.value)}
                                         onFocus={() => setShowOriginCityDropdown(true)}
                                         placeholder="Select city"
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         disabled={!formData.originCountry || loadingOriginCities}
                                     />
                                     {loadingOriginCities && <p className="text-xs text-blue-500 mt-1">Loading...</p>}
                                     {!formData.originCountry && <p className="text-xs text-blue-500 mt-1">Select country first</p>}
 
                                     {showOriginCityDropdown && filteredOriginCities.length > 0 && (
-                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto">
+                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto border border-gray-200">
                                             {filteredOriginCities.map((city, index) => (
                                                 <div
                                                     key={`origin-city-${index}`}
                                                     onClick={() => selectCity('origin', city)}
-                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100"
+                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100 transition-colors"
                                                 >
                                                     {city}
                                                 </div>
@@ -464,26 +532,26 @@ const FlightSearchPage = () => {
 
                                 {/* Destination City */}
                                 <div className="relative">
-                                    <label className="block text-sm font-medium text-blue-700 mb-1">Destination City</label>
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">Destination City</label>
                                     <input
                                         type="text"
                                         value={destCitySearch}
                                         onChange={(e) => setDestCitySearch(e.target.value)}
                                         onFocus={() => setShowDestCityDropdown(true)}
                                         placeholder="Select city"
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         disabled={!formData.destinationCountry || loadingDestCities}
                                     />
                                     {loadingDestCities && <p className="text-xs text-blue-500 mt-1">Loading...</p>}
                                     {!formData.destinationCountry && <p className="text-xs text-blue-500 mt-1">Select country first</p>}
 
                                     {showDestCityDropdown && filteredDestCities.length > 0 && (
-                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto">
+                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto border border-gray-200">
                                             {filteredDestCities.map((city, index) => (
                                                 <div
                                                     key={`dest-city-${index}`}
                                                     onClick={() => selectCity('destination', city)}
-                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100"
+                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100 transition-colors"
                                                 >
                                                     {city}
                                                 </div>
@@ -497,7 +565,7 @@ const FlightSearchPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Origin Airport */}
                                 <div className="relative" ref={originAirportDropdownRef}>
-                                    <label className="text-sm font-medium text-blue-700 mb-1">
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">
                                         <MdFlightTakeoff className="inline mr-1" /> Origin Airport
                                     </label>
                                     <input
@@ -507,7 +575,7 @@ const FlightSearchPage = () => {
                                         name="originLocationName"
                                         onFocus={() => formData.originCity && setShowOriginAirportDropdown(true)}
                                         placeholder="Select airport"
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         required
                                         readOnly
                                         disabled={!formData.originCity}
@@ -515,12 +583,12 @@ const FlightSearchPage = () => {
                                     {!formData.originCity && formData.originCountry && <p className="text-xs text-blue-500 mt-1">Select city first</p>}
 
                                     {showOriginAirportDropdown && originAirports.length > 0 && (
-                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto">
+                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto border border-gray-200">
                                             {originAirports.map((airport, index) => (
                                                 <div
                                                     key={`origin-airport-${index}`}
                                                     onClick={() => selectAirport('origin', airport)}
-                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100"
+                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100 transition-colors"
                                                 >
                                                     {airport.name} ({airport.iata})
                                                 </div>
@@ -531,7 +599,7 @@ const FlightSearchPage = () => {
 
                                 {/* Destination Airport */}
                                 <div className="relative" ref={destAirportDropdownRef}>
-                                    <label className="text-sm font-medium text-blue-700 mb-1">
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">
                                         <MdFlightLand className="inline mr-1" /> Destination Airport
                                     </label>
                                     <input
@@ -541,7 +609,7 @@ const FlightSearchPage = () => {
                                         name="destinationLocationName"
                                         onFocus={() => formData.destinationCity && setShowDestAirportDropdown(true)}
                                         placeholder="Select airport"
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         required
                                         readOnly
                                         disabled={!formData.destinationCity}
@@ -549,12 +617,12 @@ const FlightSearchPage = () => {
                                     {!formData.destinationCity && formData.destinationCountry && <p className="text-xs text-blue-500 mt-1">Select city first</p>}
 
                                     {showDestAirportDropdown && destinationAirports.length > 0 && (
-                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto">
+                                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 overflow-y-auto border border-gray-200">
                                             {destinationAirports.map((airport, index) => (
                                                 <div
                                                     key={`dest-airport-${index}`}
                                                     onClick={() => selectAirport('destination', airport)}
-                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100"
+                                                    className="cursor-pointer px-3 py-2 hover:bg-blue-100 transition-colors"
                                                 >
                                                     {airport.name} ({airport.iata})
                                                 </div>
@@ -564,11 +632,68 @@ const FlightSearchPage = () => {
                                 </div>
                             </div>
 
-                            {/* Date, Time, and Travelers */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Passenger Selector */}
+                            <div>
+                                <label className="block text-sm font-medium text-blue-700 mb-2">Passengers</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassengerPopup(true)}
+                                    className="w-full text-left bg-white px-4 py-3 border border-blue-300 rounded-md shadow-sm hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                >
+                                    <div className="text-gray-900">{getPassengerSummary()}</div>
+                                </button>
+                            </div>
+
+                            {/* Modal for Passenger Selection */}
+                            {showPassengerPopup && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+                                        <h2 className="text-lg font-semibold text-gray-800">Select Passengers</h2>
+
+                                        {passengerTypes.map((type) => (
+                                            <div key={type.key} className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="font-medium text-gray-800">{type.title}</div>
+                                                    <div className="text-sm text-gray-500">{type.description}</div>
+                                                </div>
+
+                                                <div className="flex items-center space-x-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updatePassenger(type.key, false)}
+                                                        disabled={formData.passengers[type.key] <= type.minValue}
+                                                        className="w-8 h-8 border border-gray-300 rounded-full flex items-center justify-center disabled:opacity-50 hover:bg-gray-100 transition-colors"
+                                                    >
+                                                        <Minus size={14} />
+                                                    </button>
+                                                    <span className="w-6 text-center font-medium">{formData.passengers[type.key]}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updatePassenger(type.key, true)}
+                                                        className="w-8 h-8 border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+                                                    >
+                                                        <Plus size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassengerPopup(false)}
+                                            className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                        >
+                                            Done
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Date and Time Section */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Departure Date */}
                                 <div>
-                                    <label className="text-sm font-medium text-blue-700 mb-1">
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">
                                         <FaCalendarAlt className="inline mr-1" /> Departure Date
                                     </label>
                                     <input
@@ -576,14 +701,14 @@ const FlightSearchPage = () => {
                                         name="departureDate"
                                         value={formData.departureDate}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         required
                                     />
                                 </div>
 
                                 {/* Departure Time - Optional */}
                                 <div>
-                                    <label className="text-sm font-medium text-blue-700 mb-1">
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">
                                         Departure Time (Optional)
                                     </label>
                                     <input
@@ -591,89 +716,94 @@ const FlightSearchPage = () => {
                                         name="departureTime"
                                         value={formData.departureTime}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    {/* Travelers */}
-                                    <div>
-                                        <label className="text-sm font-medium text-blue-700 mb-1 block">
-                                            <FaUser className="inline mr-1" /> Travelers
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="travelers"
-                                            value={formData.travelers}
-                                            onChange={handleInputChange}
-                                            min="1"
-                                            max="9"
-                                            className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            required
-                                        />
-                                    </div>
-
-                                    {/* Trip Type */}
-                                    <div>
-                                        <label className="text-sm font-medium text-blue-700 mb-1 block">
-                                            Trip Type
-                                        </label>
-                                        <select
-                                            value={formData.tripType || "oneway"}
-                                            onChange={(e) => setFormData({ ...formData, tripType: e.target.value })}
-                                            className="w-full p-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        >
-                                            <option value="oneway">One Way</option>
-                                            <option value="roundtrip">Round Trip</option>
-                                        </select>
-                                    </div>
-
-                                    {/* 🔥 Conditionally show Return Date if tripType is roundtrip */}
-                                    {formData.tripType === "roundtrip" && (
-                                        <div className="md:col-span-2">
-                                            <label className="text-sm font-medium text-blue-700 mb-1 block">
-                                                Return Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                name="returnDate"
-                                                value={formData.returnDate || ""}
-                                                onChange={handleInputChange}
-                                                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            />
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
+                            {/* Trip Configuration */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Trip Type */}
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">
+                                        Trip Type
+                                    </label>
+                                    <select
+                                        value={formData.tripType || "oneway"}
+                                        onChange={(e) => setFormData({ ...formData, tripType: e.target.value })}
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="oneway">One Way</option>
+                                        <option value="roundtrip">Round Trip</option>
+                                    </select>
+                                </div>
+
+                                {/* Travelers */}
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">
+                                        <FaUser className="inline mr-1" /> Travelers
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="travelers"
+                                        value={formData.travelers}
+                                        onChange={handleInputChange}
+                                        min="1"
+                                        max="9"
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Return Date - Conditionally show if roundtrip */}
+                            {formData.tripType === "roundtrip" && (
+                                <div>
+                                    <label className="block text-sm font-medium text-blue-700 mb-2">
+                                        <FaCalendarAlt className="inline mr-1" /> Return Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        name="returnDate"
+                                        value={formData.returnDate || ""}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required
+                                    />
+                                </div>
+                            )}
+
                             {/* Cabin Class */}
                             <div>
-                                <label className="text-sm font-medium text-blue-700 mb-1">
+                                <label className="block text-sm font-medium text-blue-700 mb-2">
                                     <MdAirlineSeatReclineNormal className="inline mr-1" /> Cabin Class
                                 </label>
                                 <select
                                     name="cabinClass"
                                     value={formData.cabinClass}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-blue-300 rounded-md"
+                                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required
                                 >
-                                    <option value="ECONOMY">Economy</option>
-                                    <option value="PREMIUM_ECONOMY">Premium Economy</option>
-                                    <option value="BUSINESS">Business</option>
-                                    <option value="FIRST">First Class</option>
+                                    <option value="economy">Economy</option>
+                                    <option value="premium_economy">Premium Economy</option>
+                                    <option value="business">Business</option>
+                                    <option value="first">First Class</option>
                                 </select>
                             </div>
 
+                            {/* Error Message */}
                             {searchError && (
-                                <div className="text-red-500 text-sm">{searchError}</div>
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                                    <div className="text-red-700 text-sm">{searchError}</div>
+                                </div>
                             )}
 
-                            <div className="flex justify-center">
+                            {/* Submit Button */}
+                            <div className="flex justify-center pt-4">
                                 <button
                                     type="submit"
-                                    className="flex items-center justify-center px-5 py-2 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                                    className="flex items-center justify-center px-8 py-3 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors font-medium"
                                 >
                                     <FaSearch className="mr-2" />
                                     Search Flights
@@ -682,6 +812,7 @@ const FlightSearchPage = () => {
                         </form>
                     )}
                 </div>
+
             </div>
             <div className='mt-7' >
                 {availableFlightsShow && <FlightSearchUser flights={avaliableFlights} />}

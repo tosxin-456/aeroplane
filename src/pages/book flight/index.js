@@ -12,6 +12,7 @@ import {
     Check,
     AlertCircle,
     Loader2,
+    Clock,
 } from "lucide-react";
 import { FaDollarSign, FaPoundSign, FaRupeeSign, FaYenSign } from "react-icons/fa";
 import { FaEuroSign, FaNairaSign, FaPassport } from "react-icons/fa6";
@@ -40,22 +41,24 @@ export default function FlightBookingForm({ flightOffer }) {
         cardNumber: '',
         expiryMonth: '',
         expiryYear: '',
-        expiryDate: '', // This will be formatted as YYYY-MM for Amadeus
+        expiryDate: '',
         cvc: '',
         cardType: ''
     });
+    const [openTraveler, setOpenTraveler] = useState(null);
+    const [openCodeFor, setOpenCodeFor] = useState(null);
 
 
-    const navigate = useNavigate()
-
-    // If no flight was passed, use location state
+    const navigate = useNavigate();
     const location = useLocation();
-    const [bookingReferences, setBookingReference] = useState("")
-    const [ticketNumber, setTicketNumber] = useState("")
+    const [bookingReferences, setBookingReference] = useState("");
+    const [ticketNumber, setTicketNumber] = useState("");
 
+    // Get flight data - handle both props and location state
     const flight = flightOffer || location.state?.flightData || null;
-    const originalOffer = flight
-    // console.log(flight);
+
+    console.log("Flight data:", flight);
+
     const [travelers, setTravelers] = useState([
         {
             id: 1,
@@ -72,23 +75,26 @@ export default function FlightBookingForm({ flightOffer }) {
         },
     ]);
 
-    // Extract flight details from flight offer
-    const segs = flight?.itineraries[0]?.segments || [];
-    const dep = segs[0]?.departure;
-    const arr = segs[segs.length - 1]?.arrival;
-
     const [countries, setCountries] = useState([]);
 
     useEffect(() => {
         const fetchCountries = async () => {
             try {
-                const res = await fetch('https://restcountries.com/v3.1/all');
+                const res = await fetch(
+                    'https://restcountries.com/v3.1/all?fields=name,cca2,idd,flags'
+                );
                 const data = await res.json();
 
                 const sortedCountries = data
+                    .filter(country => country.name?.common && country.cca2)
                     .map(country => ({
                         name: country.name.common,
-                        code: country.cca2, // ISO 3166-1 alpha-2 country code
+                        code: country.cca2,
+                        dialCode: country.idd?.root && country.idd?.suffixes?.length
+                            ? `${country.idd.root}${country.idd.suffixes[0]}`
+                            : '+1',
+                        flag: country.flags?.png || '🏳️'
+
                     }))
                     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -102,9 +108,51 @@ export default function FlightBookingForm({ flightOffer }) {
     }, []);
 
 
-    // Format helpers
-    const formatDateTime = (str) => {
-        const date = new Date(str);
+    // Helper functions for your flight data structure
+    const getFlightRoute = () => {
+        if (!flight?.slices?.[0]) return { origin: 'N/A', destination: 'N/A' };
+
+        const slice = flight.slices[0];
+        return {
+            origin: slice.origin?.iata_code || 'N/A',
+            destination: slice.destination?.iata_code || 'N/A',
+            originName: slice.origin?.name || 'N/A',
+            destinationName: slice.destination?.name || 'N/A',
+            originCity: slice.origin?.city_name || 'N/A',
+            destinationCity: slice.destination?.city_name || 'N/A'
+        };
+    };
+
+    const getFlightSegments = () => {
+        if (!flight?.slices?.[0]?.segments) return [];
+        return flight.slices[0].segments;
+    };
+
+    const getAirlineInfo = () => {
+        return {
+            code: flight?.owner?.iata_code || 'N/A',
+            name: flight?.owner?.name || 'Airline',
+            logo: flight?.owner?.logo_symbol_url || null
+        };
+    };
+
+    const getPricing = () => {
+        return {
+            currency: flight?.total_currency || 'EUR',
+            baseAmount: parseFloat(flight?.base_amount || 0),
+            taxAmount: parseFloat(flight?.tax_amount || 0),
+            totalAmount: parseFloat(flight?.total_amount || 0)
+        };
+    };
+
+    const getFlightDuration = () => {
+        return flight?.slices?.[0]?.duration || 'N/A';
+    };
+
+    const formatDateTime = (dateTimeString) => {
+        if (!dateTimeString) return { date: 'N/A', time: 'N/A', day: 'N/A' };
+
+        const date = new Date(dateTimeString);
         return {
             date: date.toLocaleDateString("en-US", {
                 month: "short",
@@ -120,17 +168,39 @@ export default function FlightBookingForm({ flightOffer }) {
         };
     };
 
-    const formatDuration = (str) => {
-        const h = str.match(/(\d+)H/),
-            m = str.match(/(\d+)M/);
-        return `${h ? `${h[1]}h ` : ""}${m ? `${m[1]}m` : ""}`;
+    const formatDuration = (durationString) => {
+        if (!durationString) return 'N/A';
+
+        // Handle ISO 8601 duration format (PT12H40M)
+        const match = durationString.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+        if (match) {
+            const hours = match[1] || '0';
+            const minutes = match[2] || '0';
+            return `${hours}h ${minutes}m`;
+        }
+        return durationString;
     };
 
-    const getConnectionLabel = (segments) => {
+    const getConnectionInfo = () => {
+        const segments = getFlightSegments();
         const stopCount = segments.length - 1;
+
         if (stopCount === 0) return "Nonstop";
         if (stopCount === 1) return "1 connection";
         return `${stopCount} connections`;
+    };
+
+    const getFlightTimes = () => {
+        const segments = getFlightSegments();
+        if (segments.length === 0) return { departure: null, arrival: null };
+
+        const firstSegment = segments[0];
+        const lastSegment = segments[segments.length - 1];
+
+        return {
+            departure: firstSegment.departing_at,
+            arrival: lastSegment.arriving_at
+        };
     };
 
     const handleInputChange = (id, field, value) => {
@@ -179,10 +249,6 @@ export default function FlightBookingForm({ flightOffer }) {
             window.scrollTo(0, 0);
         }
     };
-    const amount = parseFloat(flight?.price?.grandTotal); // From frontend
-    const currency = flight?.price?.currency?.toLowerCase(); // e.g. 'usd'
-
-    console.log(amount, currency)
 
     const getCountryCallingCode = async (countryName) => {
         try {
@@ -191,7 +257,7 @@ export default function FlightBookingForm({ flightOffer }) {
 
             const idd = data?.[0]?.idd;
             if (idd?.root && idd?.suffixes?.length > 0) {
-                return `${idd.root}${idd.suffixes[0]}`.replace("+", ""); // remove plus sign
+                return `${idd.root}${idd.suffixes[0]}`.replace("+", "");
             }
         } catch (error) {
             console.error("Error fetching country calling code:", error);
@@ -199,16 +265,18 @@ export default function FlightBookingForm({ flightOffer }) {
         return "1";
     };
 
-
     const handlePaymentSuccess = async (paymentData) => {
         try {
             setLoading(true);
             setError(null);
             await new Promise((resolve) => setTimeout(resolve, 100));
-
+            
+            
             const formattedTravelers = await Promise.all(
                 travelers.map(async (traveler, index) => {
                     const countryCallingCode = await getCountryCallingCode(traveler.nationality);
+                const sanitizedPhone = traveler.phone.replace(/^0+/, '');
+                const fullIntlNumber = traveler.dialCode + sanitizedPhone; // e.g., +2348123456789
 
                     return {
                         id: (index + 1).toString(),
@@ -225,7 +293,7 @@ export default function FlightBookingForm({ flightOffer }) {
                                 {
                                     deviceType: "MOBILE",
                                     countryCallingCode,
-                                    number: traveler.phone,
+                                    number: fullIntlNumber,
                                 },
                             ],
                         },
@@ -253,17 +321,16 @@ export default function FlightBookingForm({ flightOffer }) {
                     flightOffer: flight,
                     travelersInfo: formattedTravelers,
                     paymentDetails: paymentData,
-                    // userId: currentUser?.id // If you track logged-in users
                 }),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.message || "Failed to book and ticket flight");
+                setError(data.message || "Failed to book flight");
+                return;
             }
 
-            // Update state with booking reference and ticket number
             setBookingReference(data.data.bookingReference);
             setTicketNumber(data.data.ticketNumber);
 
@@ -271,16 +338,13 @@ export default function FlightBookingForm({ flightOffer }) {
             setActiveStep(3);
         } catch (err) {
             console.error("Booking error:", err);
-            setError(err.message || "An error occurred during booking and ticketing");
+            setError(err.message || "An error occurred during booking");
         } finally {
             setLoading(false);
         }
-
     };
 
-
-
-    // Return loading state if no flight data yet
+    // Return loading state if no flight data
     if (!flight) {
         return (
             <div className="max-w-4xl mx-auto p-6 bg-gray-50 rounded-2xl shadow-sm text-center">
@@ -288,17 +352,12 @@ export default function FlightBookingForm({ flightOffer }) {
             </div>
         );
     }
-    const groupExtras = (extras) => {
-        const grouped = {};
-        extras.forEach((desc) => {
-            const key = desc.split(" ")[0]; // crude grouping
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(desc);
-        });
-        return grouped;
-    };
-    console.log(flight)
 
+    const route = getFlightRoute();
+    const airline = getAirlineInfo();
+    const pricing = getPricing();
+    const flightTimes = getFlightTimes();
+    const segments = getFlightSegments();
 
     return (
         <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-gray-50 rounded-xl sm:rounded-2xl shadow-sm">
@@ -308,46 +367,22 @@ export default function FlightBookingForm({ flightOffer }) {
                     <Plane className="mr-2 sm:mr-3 text-blue-600" /> Book Your Flight
                 </h2>
                 <div className="mt-4 flex items-center">
-                    <div
-                        className={`flex items-center ${activeStep >= 1 ? "text-blue-600" : "text-gray-400"
-                            }`}
-                    >
-                        <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${activeStep >= 1
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-gray-100 text-gray-500"
-                                }`}
-                        >
+                    <div className={`flex items-center ${activeStep >= 1 ? "text-blue-600" : "text-gray-400"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${activeStep >= 1 ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
                             1
                         </div>
                         <span className="hidden sm:inline font-medium">Flight Details</span>
                     </div>
                     <div className="mx-2 sm:mx-4 border-t-2 border-gray-200 w-8 sm:w-16"></div>
-                    <div
-                        className={`flex items-center ${activeStep >= 2 ? "text-blue-600" : "text-gray-400"
-                            }`}
-                    >
-                        <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${activeStep >= 2
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-gray-100 text-gray-500"
-                                }`}
-                        >
+                    <div className={`flex items-center ${activeStep >= 2 ? "text-blue-600" : "text-gray-400"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${activeStep >= 2 ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
                             2
                         </div>
                         <span className="hidden sm:inline font-medium">Travelers</span>
                     </div>
                     <div className="mx-2 sm:mx-4 border-t-2 border-gray-200 w-8 sm:w-16"></div>
-                    <div
-                        className={`flex items-center ${activeStep >= 3 ? "text-blue-600" : "text-gray-400"
-                            }`}
-                    >
-                        <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${activeStep >= 3
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-gray-100 text-gray-500"
-                                }`}
-                        >
+                    <div className={`flex items-center ${activeStep >= 3 ? "text-blue-600" : "text-gray-400"}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 ${activeStep >= 3 ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
                             3
                         </div>
                         <span className="hidden sm:inline font-medium">Confirmation</span>
@@ -370,68 +405,90 @@ export default function FlightBookingForm({ flightOffer }) {
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
                                 <div className="flex items-center space-x-3">
                                     <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                        <Plane size={18} className="text-blue-600" />
+                                        {airline.logo ? (
+                                            <img src={airline.logo} alt={airline.name} className="h-6 w-6" />
+                                        ) : (
+                                            <Plane size={18} className="text-blue-600" />
+                                        )}
                                     </div>
                                     <div>
                                         <div className="font-semibold">
-                                            {flight.validatingAirlineCodes[0]}
+                                            {airline.name}
                                         </div>
                                         <div className="text-sm text-gray-500">
-                                            Flight #{segs[0].number}
+                                            {airline.code}
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="mt-2 sm:mt-0 flex items-center text-blue-700 font-bold text-xl">
                                     <span className="mr-1 text-blue-600">
-                                        {currencyIcons[flight.price.currency] ||
-                                            flight.price.currency}
+                                        {currencyIcons[pricing.currency] || pricing.currency}
                                     </span>
-                                    {parseFloat(flight.pricing.display.amount).toFixed(2)}
+                                    {pricing.totalAmount.toFixed(2)}
                                 </div>
                             </div>
 
                             <div className="flex justify-between items-center mb-3">
                                 <div className="text-center">
                                     <div className="text-lg font-bold">
-                                        {formatDateTime(dep.at).time}
+                                        {formatDateTime(flightTimes.departure).time}
                                     </div>
-                                    <div className="text-sm font-medium">{dep.iataCode}</div>
+                                    <div className="text-sm font-medium">{route.origin}</div>
+                                    <div className="text-xs text-gray-500">{route.originCity}</div>
                                 </div>
 
                                 <div className="flex flex-col items-center flex-grow px-4">
                                     <div className="text-xs text-gray-500">
-                                        {formatDuration(flight.itineraries[0].duration)}
+                                        {formatDuration(getFlightDuration())}
                                     </div>
                                     <div className="relative w-full my-2">
                                         <div className="border-t-2 border-gray-300 absolute w-full top-1/2"></div>
-                                        <Plane
-                                            size={16}
-                                            className="text-blue-600 absolute top-1/2 left-1/2 transform -translate-y-1/2 -translate-x-1/2"
-                                        />
+                                        <Plane size={16} className="text-blue-600 absolute top-1/2 left-1/2 transform -translate-y-1/2 -translate-x-1/2" />
                                     </div>
-                                    <div
-                                        className={`text-xs font-medium rounded-full px-2 py-0.5 ${segs.length > 1
-                                            ? "bg-amber-50 text-amber-700"
-                                            : "bg-green-50 text-green-700"
-                                            }`}
-                                    >
-                                        {getConnectionLabel(segs)}
+                                    <div className={`text-xs font-medium rounded-full px-2 py-0.5 ${segments.length > 1 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}>
+                                        {getConnectionInfo()}
                                     </div>
                                 </div>
 
                                 <div className="text-center">
                                     <div className="text-lg font-bold">
-                                        {formatDateTime(arr.at).time}
+                                        {formatDateTime(flightTimes.arrival).time}
                                     </div>
-                                    <div className="text-sm font-medium">{arr.iataCode}</div>
+                                    <div className="text-sm font-medium">{route.destination}</div>
+                                    <div className="text-xs text-gray-500">{route.destinationCity}</div>
                                 </div>
                             </div>
 
                             <div className="flex justify-between text-sm text-gray-500">
-                                <div>{formatDateTime(dep.at).day}, {formatDateTime(dep.at).date}</div>
-                                <div>{formatDateTime(arr.at).day}, {formatDateTime(arr.at).date}</div>
+                                <div>
+                                    {formatDateTime(flightTimes.departure).day}, {formatDateTime(flightTimes.departure).date}
+                                </div>
+                                <div>
+                                    {formatDateTime(flightTimes.arrival).day}, {formatDateTime(flightTimes.arrival).date}
+                                </div>
                             </div>
+
+                            {/* Flight Segments Details */}
+                            {segments.length > 1 && (
+                                <div className="mt-4 pt-4 border-t border-blue-200">
+                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Flight Details</h4>
+                                    <div className="space-y-2">
+                                        {segments.map((segment, index) => (
+                                            <div key={index} className="flex justify-between items-center text-sm">
+                                                <div className="flex items-center">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                                    <span>{segment.origin?.iata_code} → {segment.destination?.iata_code}</span>
+                                                </div>
+                                                <div className="flex items-center text-gray-500">
+                                                    <Clock size={12} className="mr-1" />
+                                                    <span>{formatDuration(segment.duration)}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -440,7 +497,7 @@ export default function FlightBookingForm({ flightOffer }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Departure Date</div>
                                     <div className="font-medium">
-                                        {formatDateTime(dep.at).date}
+                                        {formatDateTime(flightTimes.departure).date}
                                     </div>
                                 </div>
                             </div>
@@ -450,7 +507,7 @@ export default function FlightBookingForm({ flightOffer }) {
                                 <div>
                                     <div className="text-sm text-gray-500">Route</div>
                                     <div className="font-medium">
-                                        {dep.iataCode} → {arr.iataCode}
+                                        {route.origin} → {route.destination}
                                     </div>
                                 </div>
                             </div>
@@ -459,20 +516,58 @@ export default function FlightBookingForm({ flightOffer }) {
 
                     {/* Fare Details */}
                     <div className="bg-white p-4 sm:p-6 rounded-xl border shadow-sm">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800">Fare Breakdown</h3>
 
-                        <div className="flex items-center justify-between text-lg font-medium">
-                            <span>Total</span>
-                            <div className="flex items-center" >
-                                <span className="text-blue-700 font-semibold">
-                                    {currencyIcons[flight.price.currency] || flight.price.currency}{" "}
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Base Fare:</span>
+                                <span className="flex items-center">
+                                    {currencyIcons[pricing.currency] || pricing.currency}
+                                    {pricing.baseAmount.toFixed(2)}
                                 </span>
-                                <span>
-                                    {parseFloat(flight.pricing.display.amount).toFixed(2)}
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Taxes & Fees:</span>
+                                <span className="flex items-center">
+                                    {currencyIcons[pricing.currency] || pricing.currency}
+                                    {pricing.taxAmount.toFixed(2)}
                                 </span>
-
+                            </div>
+                            <div className="border-t pt-2">
+                                <div className="flex justify-between text-lg font-medium">
+                                    <span>Total</span>
+                                    <div className="flex items-center">
+                                        <span className="text-blue-700 font-semibold">
+                                            {currencyIcons[pricing.currency] || pricing.currency}
+                                        </span>
+                                        <span className="ml-1">
+                                            {pricing.totalAmount.toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
+                        {/* Flight Conditions */}
+                        {flight.conditions && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">Flight Conditions</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                                    {flight.conditions.change_before_departure?.allowed && (
+                                        <div className="flex items-center">
+                                            <Check size={12} className="mr-1 text-green-500" />
+                                            <span>Changes allowed (fee: {currencyIcons[flight.conditions.change_before_departure.penalty_currency]}{flight.conditions.change_before_departure.penalty_amount})</span>
+                                        </div>
+                                    )}
+                                    {flight.conditions.refund_before_departure?.allowed && (
+                                        <div className="flex items-center">
+                                            <Check size={12} className="mr-1 text-green-500" />
+                                            <span>Refunds allowed (fee: {currencyIcons[flight.conditions.refund_before_departure.penalty_currency]}{flight.conditions.refund_before_departure.penalty_amount})</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mt-6 flex justify-end">
@@ -513,6 +608,7 @@ export default function FlightBookingForm({ flightOffer }) {
                                     )}
                                 </div>
 
+                                {/* Title, First Name, and Last Name Row */}
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -569,6 +665,7 @@ export default function FlightBookingForm({ flightOffer }) {
                                     </div>
                                 </div>
 
+                                {/* Date of Birth and Nationality Row */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -588,28 +685,81 @@ export default function FlightBookingForm({ flightOffer }) {
                                             required
                                         />
                                     </div>
-                                    <div>
+                                    <div className="relative">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Nationality
                                         </label>
-                                        <select
-                                            value={traveler.nationality}
-                                            onChange={(e) =>
-                                                handleInputChange(traveler.id, "nationality", e.target.value)
-                                            }
-                                            className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                            required
-                                        >
-                                            <option value="">Select nationality</option>
-                                            {countries.map((country) => (
-                                                <option key={country.code} value={country.code}>
-                                                    {country.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={traveler.nationalitySearch || ''}
+                                                onChange={(e) => {
+                                                    const searchValue = e.target.value;
+                                                    handleInputChange(traveler.id, "nationalitySearch", searchValue);
+                                                    setOpenTraveler(traveler.id);
+
+                                                    // Auto-select if exact match found
+                                                    const exactMatch = countries.find(c =>
+                                                        c.name.toLowerCase() === searchValue.toLowerCase()
+                                                    );
+                                                    if (exactMatch) {
+                                                        handleInputChange(traveler.id, "nationality", exactMatch.code);
+                                                    }
+                                                }}
+                                                onFocus={() => setOpenTraveler(traveler.id)}
+                                                placeholder="Type to search nationality..."
+                                                className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 pr-8"
+                                                autoComplete="off"
+                                            />
+                                            {traveler.nationality && (
+                                                <div className="absolute right-2 top-2 flex items-center">
+                                                    <img
+                                                        src={countries.find((c) => c.code === traveler.nationality)?.flag}
+                                                        alt="flag"
+                                                        className="w-5 h-4"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {openTraveler === traveler.id && (
+                                            <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded border border-gray-300 bg-white shadow-lg">
+                                                {countries
+                                                    .filter(country =>
+                                                        country.name.toLowerCase().includes(
+                                                            (traveler.nationalitySearch || '').toLowerCase()
+                                                        )
+                                                    )
+                                                    .slice(0, 8) // Limit to 8 results for better UX
+                                                    .map((country) => (
+                                                        <li
+                                                            key={country.code}
+                                                            onClick={() => {
+                                                                handleInputChange(traveler.id, "nationality", country.code);
+                                                                handleInputChange(traveler.id, "nationalitySearch", country.name);
+                                                                setOpenTraveler(null);
+                                                            }}
+                                                            className="flex items-center gap-2 px-3 py-2 hover:bg-blue-100 cursor-pointer"
+                                                        >
+                                                            <img src={country.flag} alt={country.name} className="w-5 h-4" />
+                                                            <span>{country.name}</span>
+                                                        </li>
+                                                    ))}
+                                                {countries.filter(country =>
+                                                    country.name.toLowerCase().includes(
+                                                        (traveler.nationalitySearch || '').toLowerCase()
+                                                    )
+                                                ).length === 0 && (
+                                                        <li className="px-3 py-2 text-gray-500">
+                                                            No countries found
+                                                        </li>
+                                                    )}
+                                            </ul>
+                                        )}
                                     </div>
                                 </div>
 
+                                {/* Email and Phone Row */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -629,18 +779,107 @@ export default function FlightBookingForm({ flightOffer }) {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Phone Number
                                         </label>
-                                        <input
-                                            type="tel"
-                                            value={traveler.phone}
-                                            onChange={(e) =>
-                                                handleInputChange(traveler.id, "phone", e.target.value)
-                                            }
-                                            className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                            required
-                                        />
+                                        <div className="flex relative ">
+                                            {/* Country Code Dropdown */}
+                                            <div className="relative w-32">
+                                                <input
+                                                    type="text"
+                                                    value={traveler.countryCodeSearch || ''}
+                                                    onChange={(e) => {
+                                                        const searchValue = e.target.value;
+                                                        handleInputChange(traveler.id, "countryCodeSearch", searchValue);
+                                                        setOpenCodeFor(traveler.id);
+
+                                                        // Auto-select if exact match found
+                                                        const exactMatch = countries.find(c =>
+                                                            c.dialCode === searchValue ||
+                                                            c.name.toLowerCase().includes(searchValue.toLowerCase())
+                                                        );
+                                                        if (exactMatch) {
+                                                            handleInputChange(traveler.id, "countryCode", exactMatch.code);
+                                                            handleInputChange(traveler.id, "dialCode", exactMatch.dialCode);
+                                                        }
+                                                    }}
+                                                    onFocus={() => setOpenCodeFor(traveler.id)}
+                                                    placeholder="Code"
+                                                    className="w-full p-2 border border-gray-300 rounded-l bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
+                                                    autoComplete="off"
+                                                />
+                                                {traveler.countryCode && (
+                                                    <div className="absolute right-2 top-2 flex items-center">
+                                                        <img
+                                                            src={countries.find((c) => c.code === traveler.countryCode)?.flag}
+                                                            alt="flag"
+                                                            className="w-5 h-4"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {/* Dropdown list */}
+                                                {openCodeFor === traveler.id && (
+                                                    <ul className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded border border-gray-300 bg-white shadow-lg">
+                                                        {countries
+                                                            .filter(country =>
+                                                                country.dialCode.includes(traveler.countryCodeSearch || '') ||
+                                                                country.name.toLowerCase().includes(
+                                                                    (traveler.countryCodeSearch || '').toLowerCase()
+                                                                )
+                                                            )
+                                                            .slice(0, 8) // Limit to 8 results for better UX
+                                                            .map((country) => (
+                                                                <li
+                                                                    key={country.code}
+                                                                    onClick={() => {
+                                                                        handleInputChange(traveler.id, "countryCode", country.code);
+                                                                        handleInputChange(traveler.id, "dialCode", country.dialCode);
+                                                                        handleInputChange(traveler.id, "countryCodeSearch", country.dialCode);
+                                                                        setOpenCodeFor(null);
+                                                                    }}
+                                                                    className="flex items-center gap-2 px-3 py-2 hover:bg-blue-100 cursor-pointer"
+                                                                >
+                                                                    <img src={country.flag} alt={country.name} className="w-5 h-4" />
+                                                                    <span className="font-medium">{country.dialCode}</span>
+                                                                    <span className="text-sm text-gray-500 truncate">{country.name}</span>
+                                                                </li>
+                                                            ))}
+                                                        {countries.filter(country =>
+                                                            country.dialCode.includes(traveler.countryCodeSearch || '') ||
+                                                            country.name.toLowerCase().includes(
+                                                                (traveler.countryCodeSearch || '').toLowerCase()
+                                                            )
+                                                        ).length === 0 && (
+                                                                <li className="px-3 py-2 text-gray-500">
+                                                                    No countries found
+                                                                </li>
+                                                            )}
+                                                    </ul>
+                                                )}
+                                            </div>
+
+                                            {/* Phone Input */}
+                                            <input
+                                                type="tel"
+                                                value={traveler.phone}
+                                                onChange={(e) =>
+                                                    handleInputChange(traveler.id, "phone", e.target.value)
+                                                }
+                                                placeholder="Phone number"
+                                                className="flex-1 p-2 border border-l-0 border-gray-300 rounded-r focus:ring-blue-500 focus:border-blue-500"
+                                                required
+                                            />
+                                        </div>
+
+                                        {traveler.countryCode && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Full number:{" "}
+                                                {countries.find((c) => c.code === traveler.countryCode)?.dialCode}{" "}
+                                                {traveler.phone}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
+                                {/* Passport Details Section */}
                                 <div className="border-t border-gray-100 pt-4 mt-4">
                                     <h5 className="font-medium text-gray-800 mb-3 flex items-center">
                                         <FaPassport className="mr-2 text-blue-600" size={18} /> Passport Details
@@ -698,11 +937,11 @@ export default function FlightBookingForm({ flightOffer }) {
                     </div>
 
                     {/* Payment Section - Basic Card Details */}
-
                     <PaymentPage
-                        currency={currency}
-                        amount={parseFloat(flight.pricing.display.amount).toFixed(2)}
+                        currency={pricing.currency}
+                        amount={pricing.totalAmount.toFixed(2)}
                         onPaymentSuccess={handlePaymentSuccess}
+                        flight_id = {flight.id}
                         loading={loading}
                         error={error}
                     />
@@ -751,19 +990,19 @@ export default function FlightBookingForm({ flightOffer }) {
                                     <div className="flex justify-between mb-2">
                                         <span className="text-gray-600">Flight:</span>
                                         <span className="font-semibold">
-                                            {flight.validatingAirlineCodes[0]} {segs[0].number}
+                                            {airline.code} {segments.length > 0 ? segments[0].marketing_carrier_flight_number : 'N/A'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between mb-2">
                                         <span className="text-gray-600">Route:</span>
                                         <span className="font-semibold">
-                                            {dep.iataCode} → {arr.iataCode}
+                                            {route.origin} → {route.destination}
                                         </span>
                                     </div>
                                     <div className="flex justify-between mb-2">
                                         <span className="text-gray-600">Date:</span>
                                         <span className="font-semibold">
-                                            {formatDateTime(dep.at).date}
+                                            {formatDateTime(flightTimes.departure).date}
                                         </span>
                                     </div>
                                     <div className="flex justify-between mb-2">
@@ -773,9 +1012,7 @@ export default function FlightBookingForm({ flightOffer }) {
                                     <div className="flex justify-between mb-2">
                                         <span className="text-gray-600">Total Amount:</span>
                                         <span className="font-bold text-blue-700">
-                                            {currencyIcons[flight.price.currency] ||
-                                                flight.price.currency}{" "}
-                                            {parseFloat(flight.pricing.display.amount).toFixed(2)}
+                                            {pricing.currency} {pricing.totalAmount.toFixed(2)}
                                         </span>
                                     </div>
                                 </div>

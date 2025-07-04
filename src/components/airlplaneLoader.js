@@ -3,7 +3,7 @@ import { Plane, Cloud, MapPin, Luggage, Globe } from 'lucide-react';
 
 const TravelLoader = () => {
     return (
-        <div className="fixed inset-0 w-full h-full bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 overflow-hidden">
+        <div className="fixed inset-0 w-full h-full z-[99] bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 overflow-hidden">
             {/* Background clouds scattered across entire screen */}
             <div className="absolute inset-0">
                 <Cloud className="absolute top-16 left-12 w-16 h-16 text-white opacity-60 animate-pulse"

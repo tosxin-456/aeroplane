@@ -4,6 +4,7 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { CreditCard, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 import { FaDollarSign, FaEuroSign, FaPoundSign, FaRupeeSign, FaYenSign } from 'react-icons/fa';
 import { FaNairaSign } from 'react-icons/fa6';
+import { API_BASE_URL } from '../config/apiConfig';
 
 const stripePromise = loadStripe('pk_test_51PYUVCKCg1SdKkQ4yuojVCgQuhdi438gUUspKRJEkRHsyElotNz7Wc4X10a5olQbVZfcWuoxQVZOnLmopXFzYdzg00FNxUOoqT');
 
@@ -52,41 +53,60 @@ const PaymentForm = ({ amount, currency, onPaymentSuccess, loading: externalLoad
         const cardElement = elements.getElement(CardElement);
 
         try {
-            const { error, paymentMethod } = await stripe.createPaymentMethod({
-                type: 'card',
-                card: cardElement,
-                billing_details: {
+            // Step 1: Fetch clientSecret from your backend
+            const response = await fetch(`${API_BASE_URL}/flights/create-payment-intent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount,
+                    currency,
+                    email,
                     name: cardholderName,
-                    email: email,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.clientSecret) {
+                throw new Error(data.message || 'Failed to create payment intent.');
+            }
+
+            const { clientSecret, paymentIntentId } = data;
+
+            // Step 2: Confirm the payment using Stripe.js
+            const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: cardElement,
+                    billing_details: {
+                        name: cardholderName,
+                        email: email,
+                    },
                 },
             });
 
             if (error) {
-                setErrorMessage(error.message);
-                setPaymentStatus('error');
-                setIsProcessing(false);
-                return;
+                throw new Error(error.message);
             }
 
-            // Simulate successful payment confirmation on frontend
-            setTimeout(() => {
-                setPaymentStatus('success');
-                setIsProcessing(false);
-      
+            // Step 3: Payment successful
+            setPaymentStatus('success');
+            setIsProcessing(false);
 
-                // Call the onPaymentSuccess callback with payment details
-                if (onPaymentSuccess) {
-                    onPaymentSuccess({
-                        paymentMethodId: paymentMethod.id,
-                        amount: amount,
-                        currency: currency,
-                        customerEmail: email,
-                        customerName: cardholderName,
-                        timestamp: new Date().toISOString(),
-                        status: 'succeeded'
-                    });
-                }
-            }, 1500); // Add a small delay to simulate processing
+            // Callback to parent component or backend
+            if (onPaymentSuccess) {
+                onPaymentSuccess({
+                    paymentIntentId: paymentIntent.id,
+                    paymentMethodId: paymentIntent.payment_method,
+                    amount,
+                    currency,
+                    customerEmail: email,
+                    customerName: cardholderName,
+                    timestamp: new Date().toISOString(),
+                    status: paymentIntent.status
+                });
+            }
 
         } catch (err) {
             const errorMsg = err.message || 'An unexpected error occurred. Please try again.';
@@ -95,6 +115,7 @@ const PaymentForm = ({ amount, currency, onPaymentSuccess, loading: externalLoad
             setIsProcessing(false);
         }
     };
+
 
     const handleRetry = () => {
         setPaymentStatus(null);
@@ -138,7 +159,7 @@ const PaymentForm = ({ amount, currency, onPaymentSuccess, loading: externalLoad
             </div>
         );
     }
-    
+
 
     return (
         <div className="space-y-6">
@@ -231,8 +252,8 @@ const PaymentForm = ({ amount, currency, onPaymentSuccess, loading: externalLoad
                 disabled={!stripe || isProcessing || !email.trim() || !cardholderName.trim()}
                 onClick={handleSubmit}
                 className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-all duration-200 ${!stripe || isProcessing || !email.trim() || !cardholderName.trim()
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700'
                     }`}
             >
                 {isProcessing ? (
